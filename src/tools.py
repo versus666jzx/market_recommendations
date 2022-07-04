@@ -200,7 +200,7 @@ def save_to_pd_dataframe(queue: Queue, df: pd.DataFrame):
 			print(f'Count crowled data: {len(df)}', end='\r')
 		except:
 			# если за 30 секунд в очереди не появилось данных, полагаем что парсинг завершен
-			df.to_csv('products.csv', index=False)
+			df.to_csv('../data/products.csv', index=False)
 			break
 
 
