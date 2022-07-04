@@ -2,7 +2,7 @@ import configparser
 import os
 
 
-path = "./config/config.ini"
+path = "../config/config.ini"
 
 
 def __create_config(path: str) -> None:
