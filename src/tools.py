@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import re
 from typing import Tuple, Any, List
 
+import numpy
 from fake_useragent import UserAgent
 from requests import get, exceptions
 from lxml.etree import HTML
@@ -11,6 +14,12 @@ from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
 
+import torch
+import transformers
+
+import faiss
+
+import streamlit as st
 
 def get_category_data(type: str, cat_name: str = None) -> int | list:
 	"""
@@ -272,3 +281,68 @@ def get_sku_and_product_id_from_url(url: str) -> tuple[Any, Any]:
 		prod_id = sku_id = None
 
 	return sku_id, prod_id
+
+
+@st.experimental_memo
+def _get_bert_model() -> transformers.BertModel:
+	config = transformers.BertConfig.from_json_file(
+		'../model/bert_config.json')
+	model = transformers.BertModel.from_pretrained(
+		'../model/pytorch_model.bin', config=config)
+	return model
+
+
+@st.experimental_memo
+def _get_tokenizer() -> transformers.BertTokenizer:
+	return transformers.BertTokenizer('../model/vocab.txt')
+
+
+@st.experimental_memo
+def _get_faiss_index() -> faiss.IndexFlatL2:
+	return faiss.read_index('../data/faiss_index.index')
+
+
+@st.experimental_memo
+def _get_products_data() -> pd.DataFrame:
+	return pd.read_csv('../data/products.csv')
+
+
+@st.experimental_memo
+def _get_description_embeddings() -> pd.DataFrame:
+	return pd.read_csv('../data/embedded_description_no_lemmas')
+
+
+def get_text_embedding(text: str) -> numpy.ndarray:
+	try:
+		tokenizer = _get_tokenizer
+		model = _get_bert_model()
+	except Exception as err:
+		raise Exception(f'Failed to initialize model: {err}')
+
+	vector = torch.LongTensor(
+		np.array(
+			tokenizer.encode(
+				text, add_special_tokens=True, max_length=512, padding=False
+			)
+		)
+	).resize(1, 52)
+
+	attention_mask = torch.LongTensor(
+		np.ones(
+			shape=(1, len(vector))
+		).astype('int'))
+
+	with torch.no_grad():
+		embedings = model(vector, attention_mask=attention_mask)
+
+	text_embedding = embedings[0][:, 0, :].numpy()
+	return text_embedding
+
+
+def return_n_neighbors_by_description(text: str, n_neighbors: int):
+	if text is None or text.strip() == '':
+		return 'No text input'
+
+	index = _get_faiss_index()
+	products = _get_products_data()
+	description_embeddings = _get_description_embeddings()
