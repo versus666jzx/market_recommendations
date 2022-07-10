@@ -4,6 +4,7 @@ import re
 from typing import Tuple, Any, List
 
 import numpy
+import requests
 from fake_useragent import UserAgent
 from requests import get, exceptions
 from lxml.etree import HTML
@@ -370,3 +371,8 @@ def return_n_neighbors_by_description(text: str, n_neighbors: int):
 def get_random_product() -> pd.Series:
 	data = get_products_data()
 	return data.loc[np.random.randint(len(data))]
+
+
+def get_product_image(url: str) -> np.ndarray:
+	try:
+		requests.get(url, timeout=3).content

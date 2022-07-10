@@ -37,45 +37,53 @@ if add_selectbox == "Get prediction for random product":
 		with col1:
 			same = all_products.loc[indexes[0][1]]
 			imgs_url = tools.find_url(same['images'])
-			image = requests.get(imgs_url[0]).content
+			st.write(imgs_url)
+			image = requests.get(imgs_url[0], timeout=3).content
 			st.image(image, caption=f"{same['dimension17']} {same['name']}, {same['price']} RUB")
 
 			same = all_products.loc[indexes[0][2]]
 			imgs_url = tools.find_url(same['images'])
-			image = requests.get(imgs_url[0]).content
+			st.write(imgs_url)
+			image = requests.get(imgs_url[0], timeout=3).content
 			st.image(image, use_column_width=True, caption=f"{same['dimension17']} {same['name']}, {same['price']} RUB")
 
 		with col2:
 			same = all_products.loc[indexes[0][3]]
 			imgs_url = tools.find_url(same['images'])
-			image = requests.get(imgs_url[0]).content
+			st.write(imgs_url)
+			image = requests.get(imgs_url[0], timeout=3).content
 			st.image(image, use_column_width=True, caption=f"{same['dimension17']} {same['name']}, {same['price']} RUB")
 
 			same = all_products.loc[indexes[0][4]]
 			imgs_url = tools.find_url(same['images'])
-			image = requests.get(imgs_url[0]).content
+			st.write(imgs_url)
+			image = requests.get(imgs_url[0], timeout=3).content
 			st.image(image, use_column_width=True, caption=f"{same['dimension17']} {same['name']}, {same['price']} RUB")
 
 		with col3:
 			same = all_products.loc[indexes[0][5]]
 			imgs_url = tools.find_url(same['images'])
-			image = requests.get(imgs_url[0]).content
+			st.write(imgs_url)
+			image = requests.get(imgs_url[0], timeout=3).content
 			st.image(image, use_column_width=True, caption=f"{same['dimension17']} {same['name']}, {same['price']} RUB")
 
 			same = all_products.loc[indexes[0][6]]
 			imgs_url = tools.find_url(same['images'])
-			image = requests.get(imgs_url[0]).content
+			st.write(imgs_url)
+			image = requests.get(imgs_url[0], timeout=3).content
 			st.image(image, use_column_width=True, caption=f"{same['dimension17']} {same['name']}, {same['price']} RUB")
 
 		with col4:
 			same = all_products.loc[indexes[0][7]]
 			imgs_url = tools.find_url(same['images'])
-			image = requests.get(imgs_url[0]).content
+			st.write(imgs_url)
+			image = requests.get(imgs_url[0], timeout=3).content
 			st.image(image, use_column_width=True, caption=f"{same['dimension17']} {same['name']}, {same['price']} RUB")
 
 			same = all_products.loc[indexes[0][8]]
 			imgs_url = tools.find_url(same['images'])
-			image = requests.get(imgs_url[0]).content
+			st.write(imgs_url)
+			image = requests.get(imgs_url[0], timeout=3).content
 			st.image(image, use_column_width=True, caption=f"{same['dimension17']} {same['name']}, {same['price']} RUB")
 
 
