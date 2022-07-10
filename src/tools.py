@@ -286,35 +286,46 @@ def get_sku_and_product_id_from_url(url: str) -> tuple[Any, Any]:
 @st.experimental_memo
 def _get_bert_model() -> transformers.BertModel:
 	config = transformers.BertConfig.from_json_file(
-		'../model/bert_config.json')
+		'model/bert_config.json')
 	model = transformers.BertModel.from_pretrained(
-		'../model/pytorch_model.bin', config=config)
+		'model/pytorch_model.bin', config=config)
 	return model
 
 
 @st.experimental_memo
 def _get_tokenizer() -> transformers.BertTokenizer:
-	return transformers.BertTokenizer('../model/vocab.txt')
+	return transformers.BertTokenizer('model/vocab.txt')
 
 
 @st.experimental_memo
-def _get_faiss_index() -> faiss.IndexFlatL2:
-	return faiss.read_index('../data/faiss_index.index')
+def get_faiss_description_index() -> faiss.IndexFlatL2:
+	return faiss.read_index('data/faiss_description_index.index')
 
 
 @st.experimental_memo
-def _get_products_data() -> pd.DataFrame:
-	return pd.read_csv('../data/products.csv')
+def get_products_data() -> pd.DataFrame:
+	return pd.read_csv('data/products.csv')
 
 
 @st.experimental_memo
-def _get_description_embeddings() -> pd.DataFrame:
-	return pd.read_csv('../data/embedded_description_no_lemmas')
+def get_description_embeddings() -> pd.DataFrame:
+	return pd.read_csv('data/embedded_description')
+
+
+def find_url(string: str) -> list[str]:
+	regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
+	url = re.findall(regex, string)
+	res = [x[0] for x in url]
+	if len(res) > 0:
+		return res
+	else:
+		# если нет изображений у товара, возвращаем картинку No image available
+		return ['https://ih0.redbubble.net/image.343726250.4611/flat,800x800,075,f.jpg']
 
 
 def get_text_embedding(text: str) -> numpy.ndarray:
 	try:
-		tokenizer = _get_tokenizer
+		tokenizer = _get_tokenizer()
 		model = _get_bert_model()
 	except Exception as err:
 		raise Exception(f'Failed to initialize model: {err}')
@@ -322,10 +333,10 @@ def get_text_embedding(text: str) -> numpy.ndarray:
 	vector = torch.LongTensor(
 		np.array(
 			tokenizer.encode(
-				text, add_special_tokens=True, max_length=512, padding=False
+				text, add_special_tokens=True, max_length=512, padding=False, truncation=True
 			)
 		)
-	).resize(1, 52)
+	).resize((-1, 1))
 
 	attention_mask = torch.LongTensor(
 		np.ones(
@@ -342,7 +353,20 @@ def get_text_embedding(text: str) -> numpy.ndarray:
 def return_n_neighbors_by_description(text: str, n_neighbors: int):
 	if text is None or text.strip() == '':
 		return 'No text input'
+	text_embedding = get_text_embedding(text)
+	index = get_faiss_description_index()
+	products = get_products_data()
+	description_embeddings = get_description_embeddings()
+	distances, indexes = index.search(
+		np.ascontiguousarray(
+			text_embedding
+			.astype('float32')
+			.reshape((1, -1))
+		), n_neighbors)
 
-	index = _get_faiss_index()
-	products = _get_products_data()
-	description_embeddings = _get_description_embeddings()
+	return products[indexes[0]]
+
+
+def get_random_product() -> pd.Series:
+	data = get_products_data()
+	return data.loc[np.random.randint(len(data))]
