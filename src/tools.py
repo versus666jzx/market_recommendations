@@ -22,6 +22,7 @@ import faiss
 
 import streamlit as st
 
+
 def get_category_data(type: str, cat_name: str = None) -> int | list:
 	"""
 	Returns the requested data by category
@@ -65,7 +66,7 @@ def get_category_data(type: str, cat_name: str = None) -> int | list:
 		cat[cat_name]
 	except KeyError:
 		raise ValueError(f'Wrong category name: {cat_name}. \n'
-		                 f'Possible cat_names: {", ".join([name for name in cat.keys()])}')
+						 f'Possible cat_names: {", ".join([name for name in cat.keys()])}')
 
 	if type == 'id':
 		return cat[cat_name]['id']
@@ -77,13 +78,13 @@ def get_category_data(type: str, cat_name: str = None) -> int | list:
 
 def get_product_data_by_url(url: str) -> tuple[Any, Any, Any]:
 	"""
-    Get additional data by product URL.
-    Additional data uncludes:
-        - description
-        - product usage
-        - product composition
+	Get additional data by product URL.
+	Additional data uncludes:
+		- description
+		- product usage
+		- product composition
 
-    """
+	"""
 	user_agent = UserAgent().random
 	try:
 		res = get(url, timeout=5, headers={'User-Agent': user_agent}).text
@@ -93,23 +94,23 @@ def get_product_data_by_url(url: str) -> tuple[Any, Any, Any]:
 
 	try:
 		description: str or None = ' '.join(res.xpath('/html/body/div[1]/main/div/div/section/section[3]/section[2]/section/section[1]/div/ul/li[1]/article/div/section[1]')[0].text.replace('\n\n', '').split()) \
-        if len(res.xpath('/html/body/div[1]/main/div/div/section/section[3]/section[2]/section/section[1]/div/ul/li[1]/article/div/section[1]')) > 0 \
-           and res.xpath('/html/body/div[1]/main/div/div/section/section[3]/section[2]/section/section[1]/div/ul/li[1]/article/div/section[1]')[0].text is not None\
-        else None
+		if len(res.xpath('/html/body/div[1]/main/div/div/section/section[3]/section[2]/section/section[1]/div/ul/li[1]/article/div/section[1]')) > 0 \
+		   and res.xpath('/html/body/div[1]/main/div/div/section/section[3]/section[2]/section/section[1]/div/ul/li[1]/article/div/section[1]')[0].text is not None\
+		else None
 	except:
 		description = None
 
 	try:
 		product_usage: str or None = ' '.join(res.xpath('/html/body/div[1]/main/div/div/section/section[3]/section[2]/section/section[1]/div/ul/li[2]/article/div/section')[0].text.replace('\n\n', '').split()) \
-        if len(res.xpath('/html/body/div[1]/main/div/div/section/section[3]/section[2]/section/section[1]/div/ul/li[2]/article/div/section')) > 0 \
-        else None
+		if len(res.xpath('/html/body/div[1]/main/div/div/section/section[3]/section[2]/section/section[1]/div/ul/li[2]/article/div/section')) > 0 \
+		else None
 	except:
 		product_usage = None
 
 	try:
 		product_composition: str or None = ' '.join(res.xpath('/html/body/div[1]/main/div/div/section/section[3]/section[2]/section/section[1]/div/ul/li[3]/article/div/section')[0].text.replace('\n\n', '').split()) \
-        if len(res.xpath('/html/body/div[1]/main/div/div/section/section[3]/section[2]/section/section[1]/div/ul/li[3]/article/div/section')) > 0 \
-        else None
+		if len(res.xpath('/html/body/div[1]/main/div/div/section/section[3]/section[2]/section/section[1]/div/ul/li[3]/article/div/section')) > 0 \
+		else None
 	except:
 		product_composition = None
 
@@ -122,35 +123,35 @@ def parse_category(queue: Queue, cat_name: str):
 	url = 'https://goldapple.ru/web_scripts/discover/category/products/'
 
 	fields = [
-        'id',
-        'sku',
-        'name',
-        'brand',
-        'brand_type',
-        'dimension17',
-        'dimension18',
-        'dimension19',
-        'dimension20',
-        'country',
-        'price',
-        'currency',
-        'old_price',
-        'category_type',
-        'url',
-        'images',
-        'type',
-        'volume',
-        'main_product_sku',
-        'main_product_id',
-        'best_loyalty_price',
-        'dimension29',
-        'dimension28',
-        'description',
-        'product_usage',
-        'product_composition',
-        'category',
-        'category_ru'
-        ]
+		'id',
+		'sku',
+		'name',
+		'brand',
+		'brand_type',
+		'dimension17',
+		'dimension18',
+		'dimension19',
+		'dimension20',
+		'country',
+		'price',
+		'currency',
+		'old_price',
+		'category_type',
+		'url',
+		'images',
+		'type',
+		'volume',
+		'main_product_sku',
+		'main_product_id',
+		'best_loyalty_price',
+		'dimension29',
+		'dimension28',
+		'description',
+		'product_usage',
+		'product_composition',
+		'category',
+		'category_ru'
+		]
 
 	for page in range(1, 10000):
 		try:
@@ -205,8 +206,8 @@ def save_to_pd_dataframe(queue: Queue, df: pd.DataFrame):
 			product_data = queue.get(timeout=30)
 			df = pd.concat([
 				df,
-                pd.DataFrame([product_data])
-            ])
+				pd.DataFrame([product_data])
+			])
 			print(f'Count crowled data: {len(df)}', end='\r')
 		except:
 			# если за 30 секунд в очереди не появилось данных, полагаем что парсинг завершен
@@ -216,10 +217,10 @@ def save_to_pd_dataframe(queue: Queue, df: pd.DataFrame):
 
 def get_sitemats_list(url: str='https://goldapple.ru/sitemap.xml') -> list[str]:
 	"""
-    Get sitemaps list from goldapple or another url.
-    :param url: url to sitemap.xml
-    :return: list of sitemaps urls
-    """
+	Get sitemaps list from goldapple or another url.
+	:param url: url to sitemap.xml
+	:return: list of sitemaps urls
+	"""
 	try:
 		res = get(url, timeout=30).text
 	except exceptions.ConnectTimeout as err:
@@ -242,11 +243,11 @@ def get_sitemats_list(url: str='https://goldapple.ru/sitemap.xml') -> list[str]:
 
 def get_product_urls(sitemaps: list[str]) -> Tuple[list[str], list[str]]:
 	"""
-    Get products urls from sitemaps.
+	Get products urls from sitemaps.
 
-    :param sitemaps: list of sitemaps urls
-    :return: list of product links
-    """
+	:param sitemaps: list of sitemaps urls
+	:return: list of product links
+	"""
 	cat_urls = []
 	prod_urls = []
 	pattern = re.compile(r'\d{10,12}')
@@ -266,10 +267,10 @@ def get_product_urls(sitemaps: list[str]) -> Tuple[list[str], list[str]]:
 
 def get_sku_and_product_id_from_url(url: str) -> tuple[Any, Any]:
 	"""
-    Return sku_id and product_id from product URL
-    :param url: url to product
-    :return: [sku_id, prod_id]
-    """
+	Return sku_id and product_id from product URL
+	:param url: url to product
+	:return: [sku_id, prod_id]
+	"""
 	pattern = re.compile(r'\d{4,20}')
 	res_sku = re.findall(pattern, url)
 	if len(res_sku) == 1:
@@ -373,6 +374,11 @@ def get_random_product() -> pd.Series:
 	return data.loc[np.random.randint(len(data))]
 
 
-def get_product_image(url: str) -> np.ndarray:
-	try:
-		requests.get(url, timeout=3).content
+def download_and_save_image(url: str):
+	sleep(np.random.randint(3, 10))
+	img_name = url.split('/')[-1]
+	user_agent = UserAgent().random
+	res = requests.get(url, timeout=3, headers={'User-Agent': user_agent})
+	if res.status_code == 200:
+		with open(f'../data/images/{img_name}', 'wb') as img:
+			img.write(res.content)

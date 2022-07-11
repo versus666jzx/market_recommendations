@@ -13,8 +13,7 @@ if __name__ == '__main__':
 	categories_name = get_category_data(type='cat_names')
 
 	# создаем поток для каждой категории
-	threads = [Thread(target=parse_category, args=(queue, category_name)) for category_name in
-	           categories_name]
+	threads = [Thread(target=parse_category, args=(queue, category_name)) for category_name in categories_name]
 	# создаем поток для сохранения результатов парсинга в df
 	threads.append(Thread(target=save_to_pd_dataframe, args=(queue, df)))
 	# стартуем потоки
