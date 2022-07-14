@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import Tuple, Any, List
+from threading import Lock
 
 import numpy
 import requests
@@ -21,6 +22,14 @@ import transformers
 import faiss
 
 import streamlit as st
+
+from PIL import Image
+
+
+def t_print(*a, **b):
+	"""Thread safe print function"""
+	with Lock():
+		print(*a, **b)
 
 
 def get_category_data(type: str, cat_name: str = None) -> int | list:
@@ -117,7 +126,7 @@ def get_product_data_by_url(url: str) -> tuple[Any, Any, Any]:
 	return description, product_usage, product_composition
 
 
-def parse_category(queue: Queue, cat_name: str):
+def parse_category(queue: Queue, cat_name: str) -> str:
 	category_id = get_category_data(cat_name=cat_name, type='id')
 	category_ru_name = get_category_data(cat_name=cat_name, type='ru_name')
 	url = 'https://goldapple.ru/web_scripts/discover/category/products/'
@@ -134,7 +143,6 @@ def parse_category(queue: Queue, cat_name: str):
 		'dimension20',
 		'country',
 		'price',
-		'currency',
 		'old_price',
 		'category_type',
 		'url',
@@ -171,7 +179,7 @@ def parse_category(queue: Queue, cat_name: str):
 		elif len(res) < 20:
 			for product in res:
 				# фильтруем только необходимые поля, если поля нет, то None
-				product_new = {your_key: product[your_key] if your_key in product.keys() else None  for your_key in fields}
+				product_new = {your_key: product[your_key] if your_key in product.keys() else None for your_key in fields}
 				# получаем данные из html странички, которые отсутствуют в запросе (исключив это можно значительно сократить время парсинга)
 				description, product_usage, product_composition = get_product_data_by_url(product['url'])
 				product_new['description'] = description
@@ -179,14 +187,14 @@ def parse_category(queue: Queue, cat_name: str):
 				product_new['product_composition'] = product_composition
 				product_new['category'] = cat_name
 				product_new['category_ru'] = category_ru_name
-				# кладем объект в очередь
+				# кладем продукт в очередь
 				queue.put(product_new)
 				queue.task_done()
 			break
 		else:
 			for product in res:
 				# фильтруем только необходимые поля, если поля нет, то None
-				product_new = {your_key: product[your_key] if your_key in product.keys() else None  for your_key in fields}
+				product_new = {your_key: product[your_key] if your_key in product.keys() else None for your_key in fields}
 				# получаем данные из html странички, которые отсутствуют в запросе (исключив это можно значительно сократить время парсинга)
 				description, product_usage, product_composition = get_product_data_by_url(product['url'])
 				product_new['description'] = description
@@ -194,25 +202,79 @@ def parse_category(queue: Queue, cat_name: str):
 				product_new['product_composition'] = product_composition
 				product_new['category'] = cat_name
 				product_new['category_ru'] = category_ru_name
-				# кладем объект в очередь
+				# кладем продукт в очередь
 				queue.put(product_new)
 				queue.task_done()
 
 
-def save_to_pd_dataframe(queue: Queue, df: pd.DataFrame):
+def save_to_pd_dataframe(queue: Queue, img_queue: Queue, df: pd.DataFrame):
+	uniq_products = []
 	while True:
 		try:
 			# sleep + timeout в requests не должны превышать данный timeout иначе парсинг может закончится раньше времени
-			product_data = queue.get(timeout=30)
-			df = pd.concat([
-				df,
-				pd.DataFrame([product_data])
-			])
-			print(f'Count crowled data: {len(df)}', end='\r')
+			product_data = queue.get(timeout=40)
+			# фильтруем дубли на лету
+			if product_data['sku'] not in uniq_products:
+				uniq_products.append(product_data['sku'])
+				df = pd.concat([
+					df,
+					pd.DataFrame([product_data])
+				])
+				# перекладываем данные в очередь для загрузки изображений
+				img_queue.put(filter_only_img_data(product_data))
+				t_print(f'Count crowled data: {len(df)}', end='\r')
 		except:
-			# если за 30 секунд в очереди не появилось данных, полагаем что парсинг завершен
+			# если за {request timeout} секунд в очереди не появилось данных, полагаем что парсинг завершен
 			df.to_csv('../data/products.csv', index=False)
+			# чистим память
+			del uniq_products
+			del df
+			# завершаем цикл
 			break
+
+
+def download_and_save_image(queue: Queue, df: pd.DataFrame):
+	while True:
+		try:
+			# получаем словарь с продуктами, ключи id, sku и images: list
+			data: dict = queue.get(timeout=60)
+			# пробегаем по всем url с изображениями товара
+			for url in data['images']:
+				# спим
+				sleep(np.random.randint(1, 3))
+				# имя будущего файла изображения
+				img_name = url.split('/')[-1]
+				# генерим рандомный юзерагент
+				user_agent = UserAgent().random
+				try:
+					# получаем картинку
+					res = requests.get(url, timeout=4, headers={'User-Agent': user_agent})
+				except:
+					continue
+				# если успех
+				if res.status_code in range(200, 203):
+					# пишем в файл
+					with open(f'../data/images/{img_name}', 'wb') as img:
+						img.write(res.content)
+					# добавляем инфу в датафрейм
+					df = pd.concat([
+							df,
+							pd.DataFrame([
+								{
+									'id': data['id'],
+									'sku': data['sku'],
+									'image': img_name
+								}
+							])
+						])
+		except:
+			df.to_csv('../data/product_images.csv', index=False)
+			del df
+			break
+
+
+def filter_only_img_data(product: dict) -> dict:
+	return {'id': product['id'], 'sku': product['sku'], 'images': product['images']}
 
 
 def get_sitemats_list(url: str='https://goldapple.ru/sitemap.xml') -> list[str]:
@@ -286,22 +348,18 @@ def get_sku_and_product_id_from_url(url: str) -> tuple[Any, Any]:
 
 
 @st.experimental_memo
-def _get_bert_model() -> transformers.BertModel:
-	config = transformers.BertConfig.from_json_file(
-		'model/bert_config.json')
-	model = transformers.BertModel.from_pretrained(
-		'model/pytorch_model.bin', config=config)
-	return model
-
-
-@st.experimental_memo
-def _get_tokenizer() -> transformers.BertTokenizer:
-	return transformers.BertTokenizer('model/vocab.txt')
-
-
-@st.experimental_memo
 def get_faiss_description_index() -> faiss.IndexFlatL2:
 	return faiss.read_index('data/faiss_description_index.index')
+
+
+@st.experimental_memo
+def get_faiss_product_usage_index() -> faiss.IndexFlatL2:
+	return faiss.read_index('data/faiss_product_usage_index.index')
+
+
+@st.experimental_memo
+def get_faiss_product_composition_index() -> faiss.IndexFlatL2:
+	return faiss.read_index('data/faiss_product_composition_index.index')
 
 
 @st.experimental_memo
@@ -314,6 +372,21 @@ def get_description_embeddings() -> pd.DataFrame:
 	return pd.read_csv('data/embedded_description')
 
 
+@st.experimental_memo
+def get_product_usage_embeddings() -> pd.DataFrame:
+	return pd.read_csv('data/embedded_product_usage')
+
+
+@st.experimental_memo
+def get_product_composition_embeddings() -> pd.DataFrame:
+	return pd.read_csv('data/embedded_product_composition')
+
+
+@st.experimental_memo
+def get_image_data() -> pd.DataFrame:
+	return pd.read_csv('data/product_images.csv')
+
+
 def find_url(string: str) -> list[str]:
 	regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
 	url = re.findall(regex, string)
@@ -323,6 +396,37 @@ def find_url(string: str) -> list[str]:
 	else:
 		# если нет изображений у товара, возвращаем картинку No image available
 		return ['https://ih0.redbubble.net/image.343726250.4611/flat,800x800,075,f.jpg']
+
+
+def get_random_product() -> pd.Series:
+	"""
+	Returns random product
+
+	:return: random product data
+	"""
+	data = get_products_data()
+	return data.loc[np.random.randint(len(data))]
+
+
+def get_image_by_sku(sku: str or int) -> np.array:
+	"""
+	Get image by product sku.
+
+	:param sku: product sku
+	:return: image product if existed, else image with 'No image' text
+	"""
+	image_data = get_image_data()
+	try:
+		image_name = image_data[image_data['sku'] == str(sku)]['image'].iloc[0]
+		img = Image.open(f'data/images/{image_name}')
+		return np.array(img)
+	except:
+		img = Image.open('data/service_images/' + 'no_img.jpg')
+		return np.array(img)
+	finally:
+		img.close()
+
+######################## possible to refactoring
 
 
 def get_text_embedding(text: str) -> numpy.ndarray:
@@ -369,16 +473,15 @@ def return_n_neighbors_by_description(text: str, n_neighbors: int):
 	return products[indexes[0]]
 
 
-def get_random_product() -> pd.Series:
-	data = get_products_data()
-	return data.loc[np.random.randint(len(data))]
+@st.experimental_memo
+def _get_bert_model() -> transformers.BertModel:
+	config = transformers.BertConfig.from_json_file(
+		'model/bert_config.json')
+	model = transformers.BertModel.from_pretrained(
+		'model/pytorch_model.bin', config=config)
+	return model
 
 
-def download_and_save_image(url: str):
-	sleep(np.random.randint(3, 10))
-	img_name = url.split('/')[-1]
-	user_agent = UserAgent().random
-	res = requests.get(url, timeout=3, headers={'User-Agent': user_agent})
-	if res.status_code == 200:
-		with open(f'../data/images/{img_name}', 'wb') as img:
-			img.write(res.content)
+@st.experimental_memo
+def _get_tokenizer() -> transformers.BertTokenizer:
+	return transformers.BertTokenizer('model/vocab.txt')
