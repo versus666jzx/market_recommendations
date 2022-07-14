@@ -16,6 +16,14 @@ python src/crawler.py
 
 ## Запуск WEB-интерфейса
 
+1. Подготовка conda окружения
+
+```shell
+conda env create -f environment.yml -p /path/to/your/envs/env_name
+```
+
+3. Запуск
+
 ```shell
 streamlit run market_recommendations/src/web_app.py
 ```
