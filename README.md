@@ -1,6 +1,6 @@
 # Quick start
 
-## Ручной запуск 
+## Ручной запуск парсинга
 
 Для запуска парсинга необходимо запустить скрипт [краулера](src/crawler.py) из проекта.
 
@@ -13,6 +13,12 @@ python src/crawler.py
 ```
 
 Ход выполнения парсинга будет отображаться в консоли
+
+## Запуск WEB-интерфейса
+
+```shell
+streamlit run market_recommendations/src/web_app.py
+```
 
 ## Docker
 
