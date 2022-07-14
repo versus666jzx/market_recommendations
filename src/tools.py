@@ -62,14 +62,38 @@ def get_category_data(type: str, cat_name: str = None) -> int | list:
 		'tovary-dlja-zhivotnyh': {'id': 7638, 'name': 'товары для животных'}
 	}
 
-	if type not in ['cat_names', 'id', 'ru_name']:
-		raise ValueError('Parameter type should by "cat_names","id" or "ru_name"')
+	ru_cat = {
+		'макияж': 'makijazh',
+		'уход': 'uhod',
+		'волосы': 'volosy',
+		'парфюмерия': 'parfjumerija',
+		'здоровье и аптека': 'zdorov-e-i-apteka',
+		'sexual wellness': 'sexual-wellness',
+		'азия': 'azija',
+		'органика': 'organika',
+		'для мужчин': 'dlja-muzhchin',
+		'для детей': 'dlja-detej',
+		'техника': 'tehnika',
+		'для дома': 'dlja-doma',
+		'одежда и аксессуары': 'odezhda-i-aksessuary',
+		'нижнее бельё': 'nizhnee-bel-jo',
+		'украшения': 'ukrashenija',
+		'лайфстайл': 'lajfstajl',
+		'тревел-форматы': 'ini-formaty',
+		'товары для животных': 'tovary-dlja-zhivotnyh'
+	}
+
+	if type not in ['cat_names', 'id', 'ru_name', 'ru_to_eng']:
+		raise ValueError('Parameter type should by "cat_names","id", "ru_name" or "ru_to_eng"')
 
 	if type == 'cat_names':
 		return [cat for cat in cat.keys()]
 
 	if cat_name is None:
 		raise ValueError('Value cat_name should be not None')
+
+	if type == 'ru_to_eng':
+		return ru_cat[cat_name]
 
 	try:
 		cat[cat_name]
@@ -349,17 +373,17 @@ def get_sku_and_product_id_from_url(url: str) -> tuple[Any, Any]:
 
 @st.experimental_memo
 def get_faiss_description_index() -> faiss.IndexFlatL2:
-	return faiss.read_index('data/faiss_description_index.index')
+	return faiss.read_index('data/faiss_index/faiss_description_index.index')
 
 
 @st.experimental_memo
 def get_faiss_product_usage_index() -> faiss.IndexFlatL2:
-	return faiss.read_index('data/faiss_product_usage_index.index')
+	return faiss.read_index('data/faiss_index/faiss_product_usage_index.index')
 
 
 @st.experimental_memo
 def get_faiss_product_composition_index() -> faiss.IndexFlatL2:
-	return faiss.read_index('data/faiss_product_composition_index.index')
+	return faiss.read_index('data/faiss_index/faiss_product_composition_index.index')
 
 
 @st.experimental_memo
@@ -369,22 +393,29 @@ def get_products_data() -> pd.DataFrame:
 
 @st.experimental_memo
 def get_description_embeddings() -> pd.DataFrame:
-	return pd.read_csv('data/embedded_description')
+	return pd.read_csv('data/embeddings/embedded_description')
 
 
 @st.experimental_memo
 def get_product_usage_embeddings() -> pd.DataFrame:
-	return pd.read_csv('data/embedded_product_usage')
+	return pd.read_csv('data/embeddings/embedded_product_usage')
 
 
 @st.experimental_memo
 def get_product_composition_embeddings() -> pd.DataFrame:
-	return pd.read_csv('data/embedded_product_composition')
+	return pd.read_csv('data/embeddings/embedded_product_composition')
 
 
 @st.experimental_memo
 def get_image_data() -> pd.DataFrame:
 	return pd.read_csv('data/product_images.csv')
+
+
+@st.experimental_memo
+def get_category_options() -> list:
+	data = get_products_data()
+	ru_cat_names = [get_category_data('ru_name', cat) for cat in data['category'].value_counts().index]
+	return ru_cat_names
 
 
 def find_url(string: str) -> list[str]:
