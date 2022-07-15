@@ -27,7 +27,10 @@ from PIL import Image
 
 
 def t_print(*a, **b):
-	"""Thread safe print function"""
+	"""
+	Thread safe print function
+	"""
+
 	with Lock():
 		print(*a, **b)
 
@@ -112,11 +115,10 @@ def get_category_data(type: str, cat_name: str = None) -> int | list:
 def get_product_data_by_url(url: str) -> tuple[Any, Any, Any]:
 	"""
 	Get additional data by product URL.
-	Additional data uncludes:
+	Additional data includes:
 		- description
 		- product usage
 		- product composition
-
 	"""
 	user_agent = UserAgent().random
 	try:
@@ -257,7 +259,16 @@ def save_to_pd_dataframe(queue: Queue, img_queue: Queue, df: pd.DataFrame):
 			break
 
 
-def download_and_save_image(queue: Queue, df: pd.DataFrame):
+def download_and_save_image(queue: Queue, df: pd.DataFrame) -> None:
+	"""
+	For each object in queue downloads all images, saves them and create DataFrame with
+	relation images to product id and sku
+
+	:param queue: queue with prodict id, sku and list of image urls
+	:param df: pd.DataFrame for saving product id, sku and image file name
+	:return: None
+	"""
+
 	while True:
 		try:
 			# получаем словарь с продуктами, ключи id, sku и images: list
@@ -304,6 +315,7 @@ def filter_only_img_data(product: dict) -> dict:
 def get_sitemats_list(url: str='https://goldapple.ru/sitemap.xml') -> list[str]:
 	"""
 	Get sitemaps list from goldapple or another url.
+
 	:param url: url to sitemap.xml
 	:return: list of sitemaps urls
 	"""
@@ -354,6 +366,7 @@ def get_product_urls(sitemaps: list[str]) -> Tuple[list[str], list[str]]:
 def get_sku_and_product_id_from_url(url: str) -> tuple[Any, Any]:
 	"""
 	Return sku_id and product_id from product URL
+
 	:param url: url to product
 	:return: [sku_id, prod_id]
 	"""
@@ -413,12 +426,23 @@ def get_image_data() -> pd.DataFrame:
 
 @st.experimental_memo
 def get_category_options() -> list:
+	"""
+	Returns category list in RU lang
+
+	:return: list of categories in RU lang
+	"""
 	data = get_products_data()
 	ru_cat_names = [get_category_data('ru_name', cat) for cat in data['category'].value_counts().index]
 	return ru_cat_names
 
 
 def find_url(string: str) -> list[str]:
+	"""
+	Finds url or urls in string
+
+	:param string: string with urls
+	:return: list urls
+	"""
 	regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
 	url = re.findall(regex, string)
 	res = [x[0] for x in url]
